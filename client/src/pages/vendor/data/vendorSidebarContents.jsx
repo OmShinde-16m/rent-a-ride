@@ -13,7 +13,7 @@ export const links = [
       title: 'Dashboard',
       links: [
         {
-          name:'adminHome',
+          name:'vendorHome',
           icon:<IoHomeOutline />,
         },
         {
@@ -21,7 +21,7 @@ export const links = [
           icon: <FiShoppingBag />,
         },
         {
-          name: 'Bookings',
+          name: 'bookings',
           icon: <FiShoppingBag />,
         },
         

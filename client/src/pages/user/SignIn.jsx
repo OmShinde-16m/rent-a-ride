@@ -94,16 +94,17 @@ function SignIn() {
         dispatch(signInSuccess(data));
         dispatch(loadingEnd());
         navigate("/adminDashboard");
+        return;
       } else if (data.isUser) {
         dispatch(signInSuccess(data));
         dispatch(loadingEnd());
         navigate("/");
+        return;
       } else {
         dispatch(loadingEnd());
         dispatch(signInFailure(data));
+        return;
       }
-      dispatch(loadingEnd());
-      dispatch(signInFailure("something went wrong"));
     } catch (error) {
       dispatch(loadingEnd());
       dispatch(signInFailure(error));

@@ -8,11 +8,14 @@ import Vehicle from "../../models/vehicleModel.js";
 // vendor add vehicle
 export const vendorAddVehicle = async (req, res, next) => {
   try {
-    if (!req.body) {
-      return next(errorHandler(500, "body cannot be empty"));
-    }
-    if (!req.files || req.files.length === 0) {
-      return next(errorHandler(500, "image cannot be empty"));
+    console.log("Vendor Add Vehicle Request:", {
+      body: Object.keys(req.body),
+      filesCount: req.files ? req.files.length : 0,
+      userId: req.user,
+    });
+
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return next(errorHandler(400, "Request body cannot be empty"));
     }
 
     const {
@@ -34,12 +37,20 @@ export const vendorAddVehicle = async (req, res, next) => {
       car_type,
       location,
       district,
-      addedBy,
     } = req.body;
+
+    // Use authenticated user's ID as addedBy (more secure than trusting request body)
+    const vendorId = req.user;
+
+    // Validate required fields
+    if (!registeration_number || !company || !name || !model || !fuel_type || !seat || !transmition_type) {
+      return next(errorHandler(400, "Missing required fields"));
+    }
 
     const uploadedImages = [];
 
-    if (req.files) {
+    // Handle image upload if images are provided
+    if (req.files && req.files.length > 0) {
       //converting the buffer to base64
       const encodedFiles = base64Converter(req);
 
@@ -53,60 +64,57 @@ export const vendorAddVehicle = async (req, res, next) => {
               });
               uploadedImages.push(result.secure_url);
             } catch (error) {
-              console.log(error, {
-                message: "error while uploading to cloudinary",
-              });
+              console.error("Cloudinary upload error:", error.message);
             }
           })
         );
-        try {
-          if (uploadedImages.length > 0) {
-            const addVehicle = new vehicle({
-              registeration_number,
-              company,
-              name,
-              image: uploadedImages,
-              model,
-              car_title: title,
-              car_description: description,
-              base_package,
-              price,
-              year_made,
-              fuel_type,
-              seats: seat,
-              transmition: transmition_type,
-              insurance_end: insurance_end_date,
-              registeration_end: registeration_end_date,
-              pollution_end: polution_end_date,
-              car_type,
-              created_at: Date.now(),
-              location,
-              district,
-              isAdminAdded: "false",
-              addedBy: addedBy,
-              isAdminApproved: false,
-            });
-
-            await addVehicle.save();
-            res.status(200).json({
-              message: "product added to mb & cloudninary successfully",
-            });
-          }
-        } catch (error) {
-          if (error.code === 11000) {
-            return next(errorHandler(409, "product already exists"));
-          }
-
-          console.log(error);
-          next(errorHandler(500, "product not uploaded"));
-        }
       } catch (error) {
-        next(errorHandler(500, "could not upload image to cloudinary"));
+        console.error("Image conversion error:", error);
+        return next(errorHandler(500, "Could not process images: " + error.message));
       }
     }
+
+    try {
+      const addVehicle = new vehicle({
+        registeration_number,
+        company,
+        name,
+        image: uploadedImages.length > 0 ? uploadedImages : [],
+        model,
+        car_title: title,
+        car_description: description,
+        base_package,
+        price,
+        year_made,
+        fuel_type,
+        seats: seat,
+        transmition: transmition_type,
+        insurance_end: insurance_end_date,
+        registeration_end: registeration_end_date,
+        pollution_end: polution_end_date,
+        car_type,
+        created_at: Date.now(),
+        location,
+        district,
+        isAdminAdded: "false",
+        addedBy: vendorId,
+        isAdminApproved: false,
+      });
+
+      await addVehicle.save();
+      res.status(200).json({
+        message: "Vehicle added successfully",
+      });
+    } catch (error) {
+      console.error("Database save error:", error);
+      if (error.code === 11000) {
+        return next(errorHandler(409, "Vehicle already exists"));
+      }
+      next(errorHandler(500, "Failed to save vehicle: " + error.message));
+    }
   } catch (error) {
-    console.log(error)
-    next(errorHandler(400, "vehicle failed to add "));
+    console.error("Vendor Add Vehicle Error:", error);
+    next(errorHandler(500, "Vehicle upload failed: " + error.message));
   }
 };
 
@@ -222,23 +230,22 @@ export const vendorDeleteVehicles = async (req, res, next) => {
 //show vendor vehicles
 export const showVendorVehicles = async (req, res, next) => {
   try {
-    if (!req.body) {
-      throw errorHandler(400, "User not found");
+    // Use req.user from verifyToken middleware (more secure than req.body)
+    // Fall back to req.body._id for backward compatibility
+    const vendorId = req.user || (req.body && req.body._id);
+
+    if (!vendorId) {
+      return next(errorHandler(400, "User ID not found"));
     }
 
-    const { _id } = req.body;
-    console.log("Fetching vehicles for vendor:", _id);
+    console.log("Fetching vehicles for vendor:", vendorId);
 
     const vendorsVehicles = await Vehicle.find({
       isDeleted: { $ne: "true" },
-      addedBy: _id,
+      addedBy: vendorId,
     });
 
     console.log("Found vehicles:", vendorsVehicles.length);
-
-    if (!vendorsVehicles || vendorsVehicles.length === 0) {
-      throw errorHandler(400, "No vehicles found");
-    }
 
     res.status(200).json(vendorsVehicles);
   } catch (error) {

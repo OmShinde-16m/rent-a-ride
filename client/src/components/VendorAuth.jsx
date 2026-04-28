@@ -28,6 +28,12 @@ function VendorOAuth() {
       const data = await res.json();
       console.log(data)
       if(res.ok){
+        if (data.accessToken) {
+          localStorage.setItem("accessToken", data.accessToken);
+        }
+        if (data.refreshToken) {
+          localStorage.setItem("refreshToken", data.refreshToken);
+        }
         dispatch(signInSuccess(data));
         navigate('/vendorDashboard')
       }

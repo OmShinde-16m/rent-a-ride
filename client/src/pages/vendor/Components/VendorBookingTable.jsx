@@ -12,8 +12,7 @@ import { API_BASE_URL } from "../../../constants/api";
 
 const VendorBookingsTable = () => {
   const [bookings, setBookings] = useState([]);
-  const [vendorVehicles, setVendorVehicles] = useState([]);
-  const [filtered, setFilteredBookings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { _id } = useSelector((state) => state.user.currentUser);
   const dispatch = useDispatch();
 
@@ -27,66 +26,35 @@ const VendorBookingsTable = () => {
     "tripCompleted",
   ];
 
-  const fetchData = async () => {
+  // Fetch vendor-specific bookings directly from the server
+  const fetchVendorBookings = async () => {
     try {
+      setIsLoading(true);
       let refreshToken = localStorage.getItem("refreshToken");
       let accessToken = localStorage.getItem("accessToken");
 
-      const res = await fetch(`${API_BASE_URL}/api/vendor/showVendorVehilces`, {
+      const res = await fetch(`${API_BASE_URL}/api/vendor/vendorBookings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${refreshToken},${accessToken}`,
         },
-        body: JSON.stringify({
-          _id,
-        }),
+        body: JSON.stringify({}),
       });
+
       if (!res.ok) {
-        console.log("not success");
+        console.error("Failed to fetch vendor bookings:", res.status);
         return;
       }
-      const data = await res.json();
-
-      if (!data) {
-        return;
-      }
-      return data;
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  //get all vendor Vehicles
-  async function getVendorAllVehicles() {
-    try {
-      const data = await fetchData();
-      setVendorVehicles(data);
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    }
-  }
-
-  useEffect(() => {
-    getVendorAllVehicles();
-  }, []);
-
-  // fetching all bookings
-  const fetchBookings = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/allBookings`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
 
       const data = await res.json();
       if (data) {
         setBookings(data);
       }
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching vendor bookings:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -96,10 +64,14 @@ const VendorBookingsTable = () => {
 
     const changeVehicleStatus = async () => {
       try {
+        let refreshToken = localStorage.getItem("refreshToken");
+        let accessToken = localStorage.getItem("accessToken");
+
         const isStatusChanged = await fetch(`${API_BASE_URL}/api/admin/changeStatus`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${refreshToken},${accessToken}`,
           },
           body: JSON.stringify({
             id: bookingId,
@@ -110,7 +82,7 @@ const VendorBookingsTable = () => {
         if (!isStatusChanged.ok) {
           return;
         }
-        fetchBookings();
+        fetchVendorBookings();
       } catch (error) {
         console.log(error);
       }
@@ -119,23 +91,14 @@ const VendorBookingsTable = () => {
     changeVehicleStatus();
   };
 
-  //all bookings
+  // Fetch bookings on mount
   useEffect(() => {
-    fetchBookings();
-  }, []);
-
-  useEffect(() => {
-    if (vendorVehicles && vendorVehicles.length > 0 && bookings && bookings.length > 0) {
-      const availableVehicleIds = vendorVehicles.map((vehicle) => vehicle._id);
-      const filtered = bookings.filter((booking) =>
-        availableVehicleIds.includes(booking.vehicleId)
-      );
-      setFilteredBookings(filtered);
+    if (_id) {
+      fetchVendorBookings();
     }
-  }, [vendorVehicles, bookings]);
+  }, [_id]);
 
   const handleDetailsModal = (cur) => {
-    
     dispatch(setVendorOrderModalOpen(true));
     dispatch(setVendorSingleOrderDetails(cur));
   };
@@ -146,7 +109,11 @@ const VendorBookingsTable = () => {
         <VendorBookingDetailModal />
 
         <div className="text-sm text-gray-600 mb-8">
-          {filtered && filtered.length > 0 ? (
+          {isLoading ? (
+            <div className="font-medium text-gray-500 flex justify-center items-center min-h-[200px]">
+              Loading bookings...
+            </div>
+          ) : bookings && bookings.length > 0 ? (
             "Check out all of your Bookings"
           ) : (
             <div className="font-extrabold text-black flex justify-center items-center min-h-[500px]">
@@ -155,9 +122,10 @@ const VendorBookingsTable = () => {
           )}
         </div>
         <div className="mb-8">
-          {filtered &&
-            filtered.length > 0 &&
-            filtered.map((cur, idx) => {
+          {!isLoading &&
+            bookings &&
+            bookings.length > 0 &&
+            bookings.map((cur, idx) => {
               const pickupDate = new Date(cur.pickupDate);
               const dropoffDate = new Date(cur.dropOffDate);
 
@@ -169,10 +137,10 @@ const VendorBookingsTable = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-0 md:gap-6 ">
                     <div className="mb-4">
                       <img
-                        alt={cur.vehicleDetails.name}
+                        alt={cur.vehicleDetails?.name || "Vehicle"}
                         className="w-full h-auto bg-gray-100  "
                         height="200"
-                        src={cur.vehicleDetails.image[0]}
+                        src={cur.vehicleDetails?.image?.[0] || "https://via.placeholder.com/200"}
                         style={{
                           aspectRatio: "200/200",
                           objectFit: "contain",
@@ -213,7 +181,7 @@ const VendorBookingsTable = () => {
                                 {
                                   <>
                                     <span> {pickupDate.getDate()}: </span>
-                                    <span>{pickupDate.getMonth()} : </span>
+                                    <span>{pickupDate.getMonth() + 1} : </span>
                                     <span>{pickupDate.getFullYear()} </span>
                                   </>
                                 }
@@ -248,7 +216,7 @@ const VendorBookingsTable = () => {
                                   <CiCalendarDate style={{ fontSize: 15 }} />
                                 </span>
                                 <span>{dropoffDate.getDate()} : </span>
-                                <span>{dropoffDate.getMonth()} : </span>
+                                <span>{dropoffDate.getMonth() + 1} : </span>
                                 <span>{dropoffDate.getFullYear()} </span>
                               </div>
                               <div className="flex justify-center items-center gap-2">

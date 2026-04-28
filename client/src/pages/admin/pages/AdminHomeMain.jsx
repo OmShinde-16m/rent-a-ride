@@ -10,14 +10,24 @@ const AdminHomeMain = () => {
     totalVendors: 0,
     totalEarnings: 0
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const { username } = useSelector((state) => state.user.currentUser);
+  const { username, _id } = useSelector((state) => state.user.currentUser || {});
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
+
         let refreshToken = localStorage.getItem("refreshToken");
         let accessToken = localStorage.getItem("accessToken");
+
+        console.log("Fetching admin stats with tokens:", {
+          hasRefreshToken: !!refreshToken,
+          hasAccessToken: !!accessToken,
+        });
 
         const res = await fetch(`${API_BASE_URL}/api/admin/dashboardStats`, {
           headers: {
@@ -26,14 +36,25 @@ const AdminHomeMain = () => {
         });
         if (res.ok) {
           const data = await res.json();
+          console.log("Admin stats fetched successfully:", data);
           setStats(data);
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          console.error("Failed to fetch admin stats:", res.status, res.statusText, errorData);
+          setError(`Failed to load dashboard: ${res.status}`);
         }
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching admin dashboard stats:", error);
+        setError("Error loading dashboard data");
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchStats();
-  }, []);
+    
+    if (_id) {
+      fetchStats();
+    }
+  }, [_id]);
 
   const statCards = [
     { title: "Total Vehicles", key: "totalVehicles", color: "rgb(254, 201, 15)", bg: "rgba(254, 201, 15, 0.2)" },
@@ -44,12 +65,24 @@ const AdminHomeMain = () => {
 
   return (
     <div className="mt-12 ">
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
       <div className="flex flex-wrap lg:flex-nowrap justify-center items-center lg:items-start">
         <div className=" dark:text-gray-200 dark:bg-secondary-dark-bg h-44 rounded-xl w-full lg:w-80 xl:w-full 2xl:w-80 p-8 pt-9 m-3  bg-hero-pattern bg-no-repeat bg-cover   bg-slate-50 xl:h-[250px] 2xl:h-44">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-gray-400">Total Earnings</p>
-              <p className="text-2xl text-black">${stats.totalEarnings.toLocaleString()}</p>
+              <p className="text-2xl text-black">
+                {isLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  `$${stats.totalEarnings?.toLocaleString?.() || 0}`
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -62,7 +95,11 @@ const AdminHomeMain = () => {
             >
               <p className="mt-3">
                 <span className="text-lg font-semibold text-black">
-                  {stats[item.key] || 0}
+                  {isLoading ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    stats[item.key] || 0
+                  )}
                 </span>
               </p>
               <p className="text-sm text-gray-400 mt-1">{item.title}</p>

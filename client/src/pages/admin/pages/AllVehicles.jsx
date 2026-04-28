@@ -56,8 +56,13 @@ function AllVehicles() {
   const handleDelete = async (vehicle_id) => {
     try {
       setVehicles(allVehicles.filter((cur) => cur._id !== vehicle_id));
+      let refreshToken = localStorage.getItem("refreshToken");
+      let accessToken = localStorage.getItem("accessToken");
       const res = await fetch(`${API_BASE_URL}/api/admin/deleteVehicle/${vehicle_id}`, {
         method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${refreshToken},${accessToken}`,
+        },
       });
       if (res.ok) {
         toast.success("deleted", {

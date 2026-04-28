@@ -9,10 +9,14 @@ const BookingsTable = () => {
 
   const fetchBookings = async () => {
     try {
+      let refreshToken = localStorage.getItem("refreshToken");
+      let accessToken = localStorage.getItem("accessToken");
+
       const res = await fetch(`${API_BASE_URL}/api/admin/allBookings`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${refreshToken},${accessToken}`,
         },
       });
 
@@ -31,10 +35,14 @@ const BookingsTable = () => {
 
     const changeVehicleStatus = async () => {
       try {
+        let refreshToken = localStorage.getItem("refreshToken");
+        let accessToken = localStorage.getItem("accessToken");
+
         const isStatusChanged = await fetch(`${API_BASE_URL}/api/admin/changeStatus`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${refreshToken},${accessToken}`,
           },
           body: JSON.stringify({
             id: bookingId,

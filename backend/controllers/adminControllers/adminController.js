@@ -28,7 +28,7 @@ export const adminProfiile = async (req,res,next)=> {
 
 export const getDashboardStats = async (req, res, next) => {
     try {
-        const totalVehicles = await Vehicle.countDocuments({ isDeleted: "false" });
+        const totalVehicles = await Vehicle.countDocuments({ isDeleted: { $ne: "true" } });
         const totalBookings = await Booking.countDocuments({});
         const totalUsers = await User.countDocuments({ isUser: true });
         const totalVendors = await User.countDocuments({ isVendor: true });
@@ -44,6 +44,7 @@ export const getDashboardStats = async (req, res, next) => {
             totalEarnings
         });
     } catch (error) {
+        console.log("Dashboard Stats Error:", error);
         next(error);
     }
 };

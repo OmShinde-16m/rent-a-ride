@@ -75,15 +75,22 @@ export const vendorGoogle = async (req, res, next) => {
     const user = await User.findOne({ email: req.body.email }).lean();
     if (user && user.isVendor) {
       const { password: hashedPassword, ...rest } = user;
-      const token = Jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN);
+      const accessToken = Jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN, {
+        expiresIn: "15m",
+      });
+      const refreshToken = Jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN, {
+        expiresIn: "7d",
+      });
+
+      await User.updateOne({ _id: user._id }, { refreshToken });
 
       res
-        .cookie("access_token", token, {
-          httpOnly: true,
-          expires: expireDate,
-        })
         .status(200)
-        .json(rest);
+        .json({
+          ...rest,
+          accessToken,
+          refreshToken,
+        });
     } else {
       const generatedPassword =
         Math.random().toString(36).slice(-8) +
@@ -100,18 +107,26 @@ export const vendorGoogle = async (req, res, next) => {
         isVendor:true,
       });
       try{
-        const savedUser=  await newUser.save();
-     const userObject = savedUser.toObject();
+        const savedUser = await newUser.save();
+        const userObject = savedUser.toObject();
      
-      const token = Jwt.sign({ id: newUser._id }, process.env.ACCESS_TOKEN);
-      const { password: hashedPassword2, ...rest } = userObject;
-      res
-        .cookie("access_token", token, {
-          httpOnly: true,
-          expires: expireDate,
-        })
-        .status(200)
-        .json(rest);
+        const accessToken = Jwt.sign({ id: newUser._id }, process.env.ACCESS_TOKEN, {
+          expiresIn: "15m",
+        });
+        const refreshToken = Jwt.sign({ id: newUser._id }, process.env.REFRESH_TOKEN, {
+          expiresIn: "7d",
+        });
+
+        await User.updateOne({ _id: newUser._id }, { refreshToken });
+
+        const { password: hashedPassword2, ...rest } = userObject;
+        res
+          .status(200)
+          .json({
+            ...rest,
+            accessToken,
+            refreshToken,
+          });
       }
       catch(error){
         if(error.code === 11000){
@@ -128,25 +143,48 @@ export const vendorGoogle = async (req, res, next) => {
 
 export const getVendorDashboardStats = async (req, res, next) => {
   try {
-    const vendorId = req.user._id;
+    const vendorId = req.user;
     
-    const vendorVehicles = await Vehicle.find({ addedBy: vendorId.toString(), isDeleted: { $ne: "true" } });
+    console.log("=== VENDOR DASHBOARD STATS REQUEST ===");
+    console.log("Vendor ID from token:", vendorId);
+    console.log("Vendor ID type:", typeof vendorId);
+    
+    // Query for vendor's vehicles
+    const vendorVehicles = await Vehicle.find({ 
+      addedBy: vendorId, 
+      isDeleted: { $ne: "true" } 
+    });
+    
+    console.log("Query criteria:", { addedBy: vendorId, isDeleted: { $ne: "true" } });
+    console.log("Found vendor vehicles:", vendorVehicles.length);
+    
+    if (vendorVehicles.length > 0) {
+      console.log("Sample vehicle addedBy:", vendorVehicles[0].addedBy);
+      console.log("Sample vehicle addedBy type:", typeof vendorVehicles[0].addedBy);
+    }
+    
     const vehicleIds = vendorVehicles.map(v => v._id);
     
+    // Query for bookings on vendor's vehicles
     const bookings = await Booking.find({ vehicleId: { $in: vehicleIds } });
     
     const totalBookings = bookings.length;
     const activeBookings = bookings.filter(b => b.status === "booked" || b.status === "onTrip").length;
     const totalEarnings = bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
 
-    res.status(200).json({
+    const result = {
       totalVehicles: vendorVehicles.length,
       totalBookings,
       activeBookings,
       totalEarnings
-    });
+    };
+
+    console.log("Dashboard stats result:", result);
+    console.log("=== END VENDOR DASHBOARD STATS ===\n");
+
+    res.status(200).json(result);
   } catch (error) {
-    console.log(error);
-    next(errorHandler(500, "Error fetching vendor stats"));
+    console.error("Error fetching vendor dashboard stats:", error);
+    next(error);
   }
 };

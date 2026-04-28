@@ -44,9 +44,7 @@ const VendorAllVehicles = () => {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${refreshToken},${accessToken}`,
           },
-          body: JSON.stringify({
-            _id,
-          }),
+          body: JSON.stringify({}),
         });
         if (!res.ok) {
           console.log("not success");

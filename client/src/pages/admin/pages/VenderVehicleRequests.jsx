@@ -21,8 +21,13 @@ const VenderVehicleRequests = () => {
   useEffect(() => {
     const fetchVendorRequest = async () => {
       try {
+        let refreshToken = localStorage.getItem("refreshToken");
+        let accessToken = localStorage.getItem("accessToken");
         const res = await fetch(`${API_BASE_URL}/api/admin/fetchVendorVehilceRequests`, {
           method: "GET",
+          headers: {
+            "Authorization": `Bearer ${refreshToken},${accessToken}`,
+          },
         });
         if (!res.ok) {
           console.error(
@@ -47,10 +52,13 @@ const VenderVehicleRequests = () => {
   const handleApproveRequest = async (id) => {
     try {
       dispatch(setUpdateRequestTable(id))
+      let refreshToken = localStorage.getItem("refreshToken");
+      let accessToken = localStorage.getItem("accessToken");
       const res = await fetch(`${API_BASE_URL}/api/admin/approveVendorVehicleRequest`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${refreshToken},${accessToken}`,
         },
         body: JSON.stringify({
           _id: id,
@@ -71,10 +79,13 @@ const VenderVehicleRequests = () => {
   const handleReject = async (id) => {
     try {
      
+      let refreshToken = localStorage.getItem("refreshToken");
+      let accessToken = localStorage.getItem("accessToken");
       const res = await fetch(`${API_BASE_URL}/api/admin/rejectVendorVehicleRequest`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${refreshToken},${accessToken}`,
         },
         body: JSON.stringify({
           _id: id,

@@ -16,6 +16,7 @@ export const allBookings = async (req, res, next) => {
       {
         $unwind: {
           path: "$vehicleDetails",
+          preserveNullAndEmptyArrays: true,
         },
       },
     ]);

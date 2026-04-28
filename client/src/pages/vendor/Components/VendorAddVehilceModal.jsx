@@ -25,7 +25,18 @@ import { API_BASE_URL } from "../../../constants/api";
 
 
 const VendorAddProductModal = () => {
-  const { register, handleSubmit, reset, control } = useForm();
+  const { register, handleSubmit, reset, control } = useForm({
+    defaultValues: {
+      company: "",
+      model: "",
+      fuelType: "",
+      carType: "",
+      Seats: "",
+      transmitionType: "",
+      vehicleLocation: "",
+      vehicleDistrict: "",
+    },
+  });
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isAddVehicleClicked } = useSelector((state) => state.addVehicle);
@@ -45,8 +56,10 @@ const onSubmit = async (addData) => {
       let accessToken = localStorage.getItem("accessToken");
 
       const img = [];
-      for (let i = 0; i < addData.image.length; i++) {
-        img.push(addData.image[i]);
+      if (addData.image && addData.image.length > 0) {
+        for (let i = 0; i < addData.image.length; i++) {
+          img.push(addData.image[i]);
+        }
       }
       const formData = new FormData();
       formData.append("registeration_number", addData.registeration_number);
@@ -56,21 +69,20 @@ const onSubmit = async (addData) => {
       });
       formData.append("name", addData.name);
       formData.append("model", addData.model);
-      formData.append("title", addData.title);
-      formData.append("base_package", addData.base_package);
+      formData.append("title", addData.title || "");
+      formData.append("base_package", addData.base_package || "");
       formData.append("price", addData.price);
-      formData.append("description", addData.description);
+      formData.append("description", addData.description || "");
       formData.append("year_made", addData.year_made);
       formData.append("fuel_type", addData.fuelType);
       formData.append("seat", addData.Seats);
       formData.append("transmition_type", addData.transmitionType);
-      formData.append("insurance_end_date", addData.insurance_end_date.$d);
-      formData.append("registeration_end_date", addData.Registeration_end_date.$d);
-      formData.append("polution_end_date", addData.polution_end_date.$d);
-      formData.append("car_type", addData.carType);
+      formData.append("insurance_end_date", addData.insurance_end_date?.$d || new Date().toISOString());
+      formData.append("registeration_end_date", addData.Registeration_end_date?.$d || new Date().toISOString());
+      formData.append("polution_end_date", addData.polution_end_date?.$d || new Date().toISOString());
+      formData.append("car_type", addData.carType || "");
       formData.append("location", addData.vehicleLocation);
       formData.append("district", addData.vehicleDistrict);
-      formData.append("addedBy", _id); 
       
 
       let tostID;
@@ -87,21 +99,25 @@ const onSubmit = async (addData) => {
       });
 
       if (!res.ok) {
-        toast.error("error");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Error response:", errorData);
+        toast.error(errorData.message || `Error: ${res.status}`);
         toast.dismiss(tostID);
+        return;
       }
       if (res.ok) {
-        toast.success("request send to admin");
+        toast.success("Vehicle request sent to admin successfully");
         toast.dismiss(tostID);
-        
+        reset();
+        setTimeout(() => {
+          navigate("/vendorDashboard/vendorAllVeihcles");
+          dispatch(addVehicleClicked(false));
+        }, 1500);
       }
-
-      reset();
     } catch (error) {
-      console.log(error);
+      console.error("Submit error:", error);
+      toast.error("Error uploading vehicle: " + error.message);
     }
-    navigate("/vendorDashboard/vendorAllVeihcles");
-    dispatch(addVehicleClicked(false));
   };
 
   const handleClose = () => {
@@ -148,6 +164,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="company"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -176,6 +193,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="model"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -217,6 +235,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="fuelType"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -239,6 +258,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   name="carType"
                   control={control}
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -258,6 +278,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="Seats"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -277,6 +298,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="transmitionType"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -295,6 +317,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="vehicleLocation"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -316,6 +339,7 @@ const onSubmit = async (addData) => {
                 <Controller
                   control={control}
                   name="vehicleDistrict"
+                  defaultValue=""
                   render={({ field }) => (
                     <TextField
                       {...field}
